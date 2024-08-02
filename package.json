@@ -14,6 +14,8 @@
     "@nextui-org/react": "^2.3.6",
     "@nextui-org/system": "^2.1.2",
     "@nextui-org/theme": "^2.2.3",
+    "@supabase/supabase-js": "^2.45.0",
+    "@tma.js/sdk": "^2.7.0",
     "framer-motion": "^11.2.6",
     "i18next": "^23.11.4",
     "konsta": "^3.1.3",
