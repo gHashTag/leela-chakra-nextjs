@@ -22,7 +22,7 @@ import { GameBoard } from '@/components/GameBoard/GameBoard'
 // });
 // console.log(miniApp, "miniApp");
 
-export const currentPlayer = {
+const currentPlayer = {
   id: '1',
   fullName: 'John Doe',
   plan: 44,
