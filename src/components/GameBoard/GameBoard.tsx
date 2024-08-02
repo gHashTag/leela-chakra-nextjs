@@ -83,7 +83,7 @@ const styles = {
     maxWidth: '800px',
     aspectRatio: '1 / 1',
 
-    textAlign: 'justify',
+    textAlign: 'justify' as const,
   },
   imageContainer: {
     flex: 1,
