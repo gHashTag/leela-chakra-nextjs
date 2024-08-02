@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-
+'use client'
+import { useEffect, useRef, useState } from 'react'
+import { App, Page, Navbar, Block } from 'konsta/react'
 // import { retrieveLaunchParams, MiniApp, postEvent } from "@tma.js/sdk";
 // import dynamic from "next/dynamic";
 
@@ -12,6 +13,7 @@ import { useEffect, useState } from 'react'
 // import { captureExceptionSentry } from "@/utils/sentry";
 // import { Spinner } from "@/components/ui/spinner";
 import { GameBoard } from '@/components/GameBoard/GameBoard'
+import ReactDice, { ReactDiceRef } from 'react-dice-complete'
 // import { useLeelaGame } from 'hooks'
 // const miniApp = new MiniApp({
 //   headerColor: "#00ae13",
@@ -38,6 +40,16 @@ const currentPlayer = {
 }
 
 const Gameboard = () => {
+  const reactDice = useRef<ReactDiceRef>(null)
+
+  const rollDone = (totalValue: number, values: number[]) => {
+    console.log('individual die values array:', values)
+    console.log('total dice value:', totalValue)
+  }
+
+  const rollAll = () => {
+    reactDice.current?.rollAll()
+  }
   //   const { initData, platform } = retrieveLaunchParams();
 
   // const [isLoading, setLoading] = useState(false)
@@ -49,31 +61,62 @@ const Gameboard = () => {
   // console.log("currentPlayer", currentPlayer);
 
   return (
-    <div
-    // style={{
-    //   width: '500',
-    //   height: '500',
-    //   // backgroundColor: "var(--main-background)",
-    // }}
-    >
-      {/* <span>Gameboard</span> */}
-      {/* <Background> */}
-      <div
-        style={{
-          height: 100,
-          backgroundColor: 'white',
-        }}
-      />
-
-      <GameBoard players={[currentPlayer]} />
-      {/* <Space height={10} />
+    <App theme="ios">
+      <Page>
+        <div
+        // style={{
+        //   width: '500',
+        //   height: '500',
+        //   // backgroundColor: "var(--main-background)",
+        // }}
+        >
+          {/* <span>Gameboard</span> */}
+          {/* <Background> */}
+          <div
+            style={{
+              height: 100,
+              backgroundColor: 'white',
+            }}
+          >
+            <h1
+              style={{
+                paddingTop: 20,
+                width: '100%',
+                textAlign: 'center',
+                color: 'black',
+                fontSize: '28px',
+                fontFamily: 'Arial',
+                fontWeight: 'bold',
+              }}
+            >
+              План 68
+            </h1>
+            <GameBoard players={[currentPlayer]} />
+            {/* <Space height={10} />
         <Dice rollDice={rollDice} lastRoll={lastRoll} size="medium" />
         <Space height={300} /> */}
-      {/* </Background> */}
-      <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl whitespace-nowrap bg-white bg-opacity-75 px-2 rounded">
-        План 68
-      </div>
-    </div>
+            {/* </Background> */}
+            <div
+              style={{
+                justifyContent: 'center',
+                display: 'flex',
+                paddingTop: 20,
+              }}
+            >
+              <ReactDice
+                numDice={1}
+                ref={reactDice}
+                rollDone={rollDone}
+                faceColor="white"
+                dotColor="black"
+                outline
+                dieSize={80}
+              />
+            </div>
+          </div>
+        </div>
+      </Page>
+    </App>
   )
 }
 

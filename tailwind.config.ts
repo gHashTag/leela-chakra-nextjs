@@ -1,5 +1,6 @@
 import { nextui } from '@nextui-org/theme'
 import type { Config } from 'tailwindcss'
+const konstaConfig = require('konsta/config')
 
 const config: Config = {
   content: [
@@ -8,6 +9,7 @@ const config: Config = {
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
     './node_modules/@nextui-org/theme/dist/**/*.{js,ts,jsx,tsx}',
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       backgroundImage: {
@@ -17,6 +19,7 @@ const config: Config = {
       },
     },
   },
+
   plugins: [nextui()],
 }
 export default config
