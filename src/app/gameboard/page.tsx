@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { App, Page, Navbar, Block } from 'konsta/react'
-import { retrieveLaunchParams, MiniApp, postEvent } from '@tma.js/sdk'
+import { App, Page, Navbar, Block, Preloader } from 'konsta/react'
+import { retrieveLaunchParams, MiniApp, postEvent, InitDataParsed } from '@tma.js/sdk'
 
 // import dynamic from "next/dynamic";
 
@@ -12,11 +12,12 @@ import { retrieveLaunchParams, MiniApp, postEvent } from '@tma.js/sdk'
 //   setUserPhotoUrl,
 // } from "@/utils/supabase";
 // import { captureExceptionSentry } from "@/utils/sentry";
-// import { Spinner } from "@/components/ui/spinner";
+
 import { GameBoard } from '@/components/GameBoard/GameBoard'
 import ReactDice, { ReactDiceRef } from 'react-dice-complete'
-import { gameStep } from '@/_shared/supabase/game'
+import { gameStep, getLastStep } from '@/_shared/supabase/game'
 import { GameStep, GameStepResultT } from '@/types'
+import { supabase } from '@/_shared/supabase'
 // import { useLeelaGame } from 'hooks'
 // const miniApp = new MiniApp({
 //   headerColor: "#00ae13",
@@ -27,74 +28,100 @@ import { GameStep, GameStepResultT } from '@/types'
 // });
 // console.log(miniApp, "miniApp");
 
-const currentPlayer = {
-  id: '1',
-  fullName: 'John Doe',
-  plan: 44,
-  avatar:
-    'https://sm.ign.com/t/ign_nordic/cover/a/avatar-gen/avatar-generations_prsz.600.jpg',
-  intention: 'Win',
-  previousPlan: 0,
-  isStart: true,
-  isFinished: false,
-  consecutiveSixes: 0,
-  positionBeforeThreeSixes: 0,
-  message: 'Ready to play',
+// const currentPlayer = {
+//   id: '1',
+//   fullName: 'John Doe',
+//   plan: 44,
+//   avatar:
+//     'https://sm.ign.com/t/ign_nordic/cover/a/avatar-gen/avatar-generations_prsz.600.jpg',
+//   intention: 'Win',
+//   previousPlan: 0,
+//   isStart: true,
+//   isFinished: false,
+//   consecutiveSixes: 0,
+//   positionBeforeThreeSixes: 0,
+//   message: 'Ready to play',
+// }
+
+interface CurrentPlayerT {
+  id: string
+  fullName: string
+  plan: number
+  avatar: string
+  intention: string
+  previousPlan: number
+  isStart: boolean
+  isFinished: boolean
 }
 
 const Gameboard = () => {
-  const { initData, platform } = retrieveLaunchParams()
-  console.log('initData', initData)
-  console.log('platform', platform)
-
-  const [roll, setRoll] = useState(0)
   const [plan, setPlan] = useState<number>(0)
-  const reactDice = useRef<ReactDiceRef>(null)
-
-  const rollDone = (totalValue: number, values: number[]) => {
-    console.log('individual die values array:', values)
-    console.log('total dice value:', totalValue)
-    setRoll(totalValue)
-  }
-
-  const rollAll = () => {
-    reactDice.current?.rollAll()
-  }
+  const [currentPlayer, setCurrentPlayer] = useState<CurrentPlayerT | null>(null)
+  const [initData, setInitData] = useState<InitDataParsed | null>(null)
 
   useEffect(() => {
-    // hmsActions.setLocalAudioEnabled(true);
-    // hmsActions.setLocalVideoEnabled(false);
-    const initRoom = async () => {
+    const getParams = async () => {
       try {
-        // 1 - получаем userid
-        const telegram_id = initData?.user?.id.toString()
-        console.log(telegram_id, 'telegram_id')
-        if (!telegram_id) {
-          throw new Error('No user id')
+        const params = await retrieveLaunchParams()
+        console.log('Params:', params)
+        setInitData(params.initData || null)
+        if (params.initData) {
+          await getCurrentUser(params.initData)
         }
-        // 2 - запросить current plan
-        const response: GameStep[] = [
-          {
-            loka: 11,
-            direction: 'step 🚶🏼',
-            consecutive_sixes: 0,
-            position_before_three_sixes: 0,
-            is_finished: false,
-          },
-        ]
-        // 4 - запрашиваем update plan
-        // roll,
-        // response,
-        // telegram_id,
-        const updatePlan = await gameStep({ roll, response, telegram_id })
-        console.log(updatePlan, 'updatePlan')
-        setPlan(updatePlan.response[0].loka)
       } catch (error) {
-        console.error(error)
+        console.error('Ошибка:', error)
+      } finally {
       }
+    }      
+    getParams() 
+  }, [])
+
+  const getCurrentUser = async (initData: InitDataParsed, attempts = 3) => {
+    try {
+      const telegram_id = initData.user?.id.toString()
+      if (!telegram_id) {
+        throw new Error('No user id')
+      }
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('user_id')
+        .eq('telegram_id', telegram_id)
+        .maybeSingle()
+      if (userError) {
+        console.error('Ошибка при получении пользователя:', userError)
+        if (attempts > 0) {
+          return getCurrentUser(initData, attempts - 1)
+        }
+        throw new Error('Не удалось получить пользователя')
+      }
+      
+      if (!userData) {
+        console.error('Пользователь не найден')
+        if (attempts > 0) {
+          return getCurrentUser(initData, attempts - 1)
+        }
+        throw new Error('Пользователь не найден')
+      }
+
+      const user_id = userData.user_id
+      console.log('user_id из Supabase:', user_id)
+      const lastStep = await getLastStep(user_id)
+      const user = {
+        id: telegram_id,
+        fullName: initData?.user?.firstName || 'Name',
+        plan: lastStep.loka,
+        avatar: initData?.user?.photoUrl || 'https://sm.ign.com/t/ign_nordic/cover/a/avatar-gen/avatar-generations_prsz.600.jpg',
+        intention: 'Win',
+        previousPlan: 0,
+        isStart: lastStep.loka === 0,
+        isFinished: lastStep.is_finished,
+      }
+      setPlan(user.plan)
+      setCurrentPlayer(user)
+    } catch (error) {
+      console.error(error)
     }
-    initRoom()
-  }, [initData])
+  }
 
   // const [isLoading, setLoading] = useState(false)
   // const { t } = useTranslation()
@@ -104,6 +131,7 @@ const Gameboard = () => {
   // console.log("message", message);
   // console.log("currentPlayer", currentPlayer);
 
+  const language = initData?.user?.languageCode === 'ru'
   return (
     <App theme="ios">
       <Page>
@@ -111,8 +139,9 @@ const Gameboard = () => {
         {/* <Background> */}
         <div
           style={{
-            height: 100,
+            height: '100%',
             backgroundColor: 'white',
+            width: '100%',
           }}
         >
           <h1
@@ -126,14 +155,14 @@ const Gameboard = () => {
               fontWeight: 'bold',
             }}
           >
-            План {plan}
+            {language ? 'План' : 'Plan'} {currentPlayer?.plan || 0}
           </h1>
-          <GameBoard players={[currentPlayer]} />
+          {currentPlayer && <GameBoard players={[currentPlayer]} />}
           {/* <Space height={10} />
         <Dice rollDice={rollDice} lastRoll={lastRoll} size="medium" />
         <Space height={300} /> */}
           {/* </Background> */}
-          <div
+          {/* <div
             style={{
               justifyContent: 'center',
               display: 'flex',
@@ -149,9 +178,9 @@ const Gameboard = () => {
               outline
               dieSize={80}
             />
+          </div> */}
           </div>
-        </div>
-      </Page>
+        </Page>
     </App>
   )
 }

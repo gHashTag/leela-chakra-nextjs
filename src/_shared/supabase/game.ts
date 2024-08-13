@@ -1,5 +1,5 @@
 import { GameStep, GameStepResultT } from '@/types'
-import { supabase } from './'
+import { supabase } from '.'
 
 export async function gameStep({
   roll,
@@ -11,6 +11,7 @@ export async function gameStep({
     .from('users')
     .select('user_id')
     .eq('telegram_id', telegram_id)
+    .limit(1)
     .single()
 
   if (userError) {
@@ -19,18 +20,27 @@ export async function gameStep({
 
   const user_id = userData.user_id
 
-  const { data: stepData, error: stepError } = await supabase.functions.invoke(
-    'game-step',
-    {
-      body: JSON.stringify({
-        roll: roll,
-        result: [...response],
-      }),
-    }
-  )
-  if (stepError) {
-    throw stepError
+  console.log(roll, 'roll')
+  console.log(response, 'response')
+  
+  // Вызов Edge Function через fetch
+  const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/game-step`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`
+    },
+    body: JSON.stringify({
+      roll: roll,
+      result: [...response],
+    }),
+  })
+
+  if (!res.ok) {
+    throw new Error('Failed to call game-step function')
   }
+
+  const stepData = await res.json()
 
   console.log(stepData, 'stepData')
 
@@ -57,53 +67,55 @@ export async function gameStep({
   return stepData
 }
 
-// export async function getLastStep(user_id: string): Promise<GameStep> {
-//   // Проверить, существует ли user_id в таблице game
-//   const { data: userExists, error: userExistsError } = await supabase
-//     .from('game')
-//     .select('user_id')
-//     .eq('user_id', user_id)
-//     .single()
+export async function getLastStep(user_id: string): Promise<GameStep> {
+  // Проверить, существует ли user_id в таблице game
+  const { data: userExists, error: userExistsError } = await supabase
+    .from('game')
+    .select('user_id')
+    .eq('user_id', user_id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
 
-//   if (userExistsError) {
-//     // Если user_id не найден, вернуть дефолтные данные
-//     if (userExistsError.code === 'PGRST116') {
-//       // Код ошибки для "No rows found"
-//       return {
-//         loka: 1,
-//         direction: 'step 🚶🏼',
-//         consecutive_sixes: 0,
-//         position_before_three_sixes: 0,
-//         is_finished: false,
-//       }
-//     }
-//     throw new Error(userExistsError.message)
-//   }
+  if (userExistsError) {
+    // Если user_id не найден, вернуть дефолтные данные
+    if (userExistsError.code === 'PGRST116') {
+      // Код ошибки для "No rows found"
+      return {
+        loka: 1,
+        direction: 'step 🚶🏼',
+        consecutive_sixes: 0,
+        position_before_three_sixes: 0,
+        is_finished: false,
+      }
+    }
+    throw new Error(userExistsError.message)
+  }
 
-//   // Если user_id найден, получить последний шаг
-//   const { data: lastStepData, error: lastStepError } = await supabase
-//     .from('game')
-//     .select('*')
-//     .eq('user_id', user_id)
-//     .order('created_at', { ascending: false })
-//     .limit(1)
+  // Если user_id найден, получить последний шаг
+  const { data: lastStepData, error: lastStepError } = await supabase
+    .from('game')
+    .select('*')
+    .eq('user_id', user_id)
+    .order('created_at', { ascending: false })
+    .limit(1)
 
-//   if (lastStepError) {
-//     throw new Error(lastStepError.message)
-//   }
+  if (lastStepError) {
+    throw new Error(lastStepError.message)
+  }
 
-//   if (!lastStepData || lastStepData.length === 0) {
-//     return {
-//       loka: 1,
-//       direction: 'step 🚶🏼',
-//       consecutive_sixes: 0,
-//       position_before_three_sixes: 0,
-//       is_finished: false,
-//     }
-//   }
+  if (!lastStepData || lastStepData.length === 0) {
+    return {
+      loka: 1,
+      direction: 'step 🚶🏼',
+      consecutive_sixes: 0,
+      position_before_three_sixes: 0,
+      is_finished: false,
+    }
+  }
 
-//   return lastStepData[0]
-// }
+  return lastStepData[0]
+}
 
 // export async function updateHistory(
 //   user_id: string,
