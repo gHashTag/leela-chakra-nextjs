@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { App, Page, Navbar, Block, Preloader } from 'konsta/react'
-import { retrieveLaunchParams, MiniApp, postEvent, InitDataParsed } from '@tma.js/sdk'
+import { retrieveLaunchParams, MiniApp, postEvent, InitDataParsed } from '@telegram-apps/sdk'
 
 // import dynamic from "next/dynamic";
 
@@ -76,7 +76,7 @@ const Gameboard = () => {
     getParams() 
   }, [])
 
-  const getCurrentUser = async (initData: InitDataParsed, attempts = 3) => {
+  const getCurrentUser = async (initData: InitDataParsed, attempts = 3): Promise<void> => {
     try {
       const telegram_id = initData.user?.id.toString()
       if (!telegram_id) {
