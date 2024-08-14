@@ -155,7 +155,7 @@ const Gameboard = () => {
               fontWeight: 'bold',
             }}
           >
-            {language ? 'План' : 'Plan'} {currentPlayer?.plan || 0}
+            Plan {currentPlayer?.plan || 0}
           </h1>
           {currentPlayer && <GameBoard players={[currentPlayer]} />}
           {/* <Space height={10} />
